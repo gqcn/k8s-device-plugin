@@ -17,123 +17,129 @@
 package rm
 
 import (
-	"fmt"
+    "fmt"
 
-	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
-	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
-	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
-	"github.com/NVIDIA/go-nvml/pkg/nvml"
-	"k8s.io/klog/v2"
+    "github.com/NVIDIA/go-gpuallocator/gpuallocator"
+    "github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+    "github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
+    "github.com/NVIDIA/go-nvml/pkg/nvml"
+    "k8s.io/klog/v2"
 
-	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+    spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
 type nvmlResourceManager struct {
-	resourceManager
-	nvml nvml.Interface
+    resourceManager
+    nvml nvml.Interface
 }
 
 var _ ResourceManager = (*nvmlResourceManager)(nil)
 
 // NewNVMLResourceManagers returns a set of ResourceManagers, one for each NVML resource in 'config'.
 func NewNVMLResourceManagers(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) ([]ResourceManager, error) {
-	ret := nvmllib.Init()
-	if ret != nvml.SUCCESS {
-		return nil, fmt.Errorf("failed to initialize NVML: %v", ret)
-	}
-	defer func() {
-		ret := nvmllib.Shutdown()
-		if ret != nvml.SUCCESS {
-			klog.Infof("Error shutting down NVML: %v", ret)
-		}
-	}()
+    ret := nvmllib.Init()
+    if ret != nvml.SUCCESS {
+        return nil, fmt.Errorf("failed to initialize NVML: %v", ret)
+    }
+    defer func() {
+        ret := nvmllib.Shutdown()
+        if ret != nvml.SUCCESS {
+            klog.Infof("Error shutting down NVML: %v", ret)
+        }
+    }()
 
-	deviceMap, err := NewDeviceMap(infolib, devicelib, config)
-	if err != nil {
-		return nil, fmt.Errorf("error building device map: %v", err)
-	}
+    deviceMap, err := NewDeviceMap(infolib, devicelib, config)
+    if err != nil {
+        return nil, fmt.Errorf("error building device map: %v", err)
+    }
 
-	var rms []ResourceManager
-	for resourceName, devices := range deviceMap {
-		if len(devices) == 0 {
-			continue
-		}
-		r := &nvmlResourceManager{
-			resourceManager: resourceManager{
-				config:   config,
-				resource: resourceName,
-				devices:  devices,
-			},
-			nvml: nvmllib,
-		}
-		rms = append(rms, r)
-	}
+    var rms []ResourceManager
+    for resourceName, devices := range deviceMap {
+        if len(devices) == 0 {
+            continue
+        }
+        r := &nvmlResourceManager{
+            resourceManager: resourceManager{
+                config:   config,
+                resource: resourceName,
+                devices:  devices,
+            },
+            nvml: nvmllib,
+        }
+        rms = append(rms, r)
+    }
 
-	return rms, nil
+    return rms, nil
 }
 
 // GetPreferredAllocation runs an allocation algorithm over the inputs.
 // The algorithm chosen is based both on the incoming set of available devices and various config settings.
 func (r *nvmlResourceManager) GetPreferredAllocation(available, required []string, size int) ([]string, error) {
-	return r.getPreferredAllocation(available, required, size)
+    return r.getPreferredAllocation(available, required, size)
 }
 
 // GetDevicePaths returns the required and optional device nodes for the requested resources
 func (r *nvmlResourceManager) GetDevicePaths(ids []string) []string {
-	paths := []string{
-		"/dev/nvidiactl",
-		"/dev/nvidia-uvm",
-		"/dev/nvidia-uvm-tools",
-		"/dev/nvidia-modeset",
-	}
+    paths := []string{
+        "/dev/nvidiactl",
+        "/dev/nvidia-uvm",
+        "/dev/nvidia-uvm-tools",
+        "/dev/nvidia-modeset",
+    }
 
-	return append(paths, r.Devices().Subset(ids).GetPaths()...)
+    return append(paths, r.Devices().Subset(ids).GetPaths()...)
 }
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
 func (r *nvmlResourceManager) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
-	return r.checkHealth(stop, r.devices, unhealthy)
+    return r.checkHealth(stop, r.devices, unhealthy)
 }
 
 // getPreferredAllocation runs an allocation algorithm over the inputs.
 // The algorithm chosen is based both on the incoming set of available devices and various config settings.
 func (r *nvmlResourceManager) getPreferredAllocation(available, required []string, size int) ([]string, error) {
-	// If all of the available devices are full GPUs without replicas, then
-	// calculate an aligned allocation across those devices.
-	if r.Devices().AlignedAllocationSupported() && !AnnotatedIDs(available).AnyHasAnnotations() {
-		return r.alignedAlloc(available, required, size)
-	}
+    // If all of the available devices are full GPUs without replicas, then
+    // calculate an aligned allocation across those devices.
+    if r.Devices().AlignedAllocationSupported() && !AnnotatedIDs(available).AnyHasAnnotations() {
+        klog.Infof("Using aligned allocation policy for %s", r.resource)
+        return r.alignedAlloc(available, required, size)
+    }
 
-	// Otherwise, distribute them evenly across all replicated GPUs
-	return r.distributedAlloc(available, required, size)
+    klog.Infof("Using preferred allocation policy %s, %v, %v, %v", r.resource, available, required, size)
+    // Otherwise, distribute them evenly across all replicated GPUs
+    return r.distributedAlloc(available, required, size)
 }
 
 // alignedAlloc shells out to the alignedAllocationPolicy that is set in
 // order to calculate the preferred allocation.
 func (r *nvmlResourceManager) alignedAlloc(available, required []string, size int) ([]string, error) {
-	var devices []string
+    var devices []string
 
-	linkedDevices, err := gpuallocator.NewDevices(
-		gpuallocator.WithNvmlLib(r.nvml),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get device link information: %w", err)
-	}
+    linkedDevices, err := gpuallocator.NewDevices(
+        gpuallocator.WithNvmlLib(r.nvml),
+    )
+    if err != nil {
+        klog.Infof("Error building linked devices: %v", err)
+        return nil, fmt.Errorf("unable to get device link information: %w", err)
+    }
 
-	availableDevices, err := linkedDevices.Filter(available)
-	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve list of available devices: %v", err)
-	}
+    availableDevices, err := linkedDevices.Filter(available)
+    if err != nil {
+        klog.Infof("Error retrieving available devices: %v", err)
+        return nil, fmt.Errorf("unable to retrieve list of available devices: %v", err)
+    }
 
-	requiredDevices, err := linkedDevices.Filter(required)
-	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve list of required devices: %v", err)
-	}
+    requiredDevices, err := linkedDevices.Filter(required)
+    if err != nil {
+        klog.Infof("Error retrieving required devices: %v", err)
+        return nil, fmt.Errorf("unable to retrieve list of required devices: %v", err)
+    }
 
-	allocatedDevices := gpuallocator.NewBestEffortPolicy().Allocate(availableDevices, requiredDevices, size)
-	for _, device := range allocatedDevices {
-		devices = append(devices, device.UUID)
-	}
+    klog.Infof("Using required devices: %s, %v, %v", availableDevices, requiredDevices, size)
+    allocatedDevices := gpuallocator.NewBestEffortPolicy().Allocate(availableDevices, requiredDevices, size)
+    for _, device := range allocatedDevices {
+        devices = append(devices, device.UUID)
+    }
 
-	return devices, nil
+    return devices, nil
 }

@@ -4,7 +4,7 @@ package gpuallocator
 
 import (
 	"fmt"
-
+	"k8s.io/klog/v2"
 	// TODO: We rename this import to reduce the changes required below.
 	// This can be removed once the link-specifics have been migrated into go-nvlib.
 	nvml "github.com/NVIDIA/go-gpuallocator/internal/links"
@@ -56,9 +56,12 @@ func (p *bestEffortPolicy) Allocate(available []*Device, required []*Device, siz
 	bestPartition := [][]*Device(nil)
 	bestScore := 0
 	iterateGPUPartitions(available, size, func(candidate [][]*Device) {
+		klog.Infof("Allocating partitions 1 for %v devices, %v, %v, %v", candidate, available, required, size)
 		if !gpuPartitionContainsSetWithAll(candidate, required) {
+			klog.Infof("Skipping partition %v as it does not contain all required devices %v", candidate, required)
 			return
 		}
+		klog.Infof("Allocating partitions 2 for %v devices, %v, %v, %v", candidate, available, required, size)
 		score := calculateGPUPartitionScore(candidate)
 		if score > bestScore || bestPartition == nil {
 			bestPartition = candidate
@@ -70,6 +73,7 @@ func (p *bestEffortPolicy) Allocate(available []*Device, required []*Device, siz
 	// 'required' devices (which may be nil so all sets will be valid).
 	filteredBestPartition := [][]*Device{}
 	for _, set := range bestPartition {
+		klog.Infof("Allocating partition bestPartition for %v devices, %v, %v, %v", set, available, required, size)
 		if gpuSetContainsAll(set, required) {
 			filteredBestPartition = append(filteredBestPartition, set)
 		}
@@ -83,6 +87,10 @@ func (p *bestEffortPolicy) Allocate(available []*Device, required []*Device, siz
 	bestSet := filteredBestPartition[0]
 	bestScore = calculateGPUSetScore(bestSet)
 	for i := 1; i < len(filteredBestPartition); i++ {
+		klog.Infof(
+			"after calculateGPUSetScore for %v devices, %v, %v, %v",
+			filteredBestPartition[i], available, required, size,
+		)
 		score := calculateGPUSetScore(filteredBestPartition[i])
 		if score > bestScore {
 			bestSet = filteredBestPartition[i]

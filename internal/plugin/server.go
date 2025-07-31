@@ -304,8 +304,10 @@ func (plugin *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r 
     defer klog.Infof("GetPreferredAllocation returning %v", response)
 
     for _, req := range r.ContainerRequests {
+        klog.Infof("GetPreferredAllocation request: %v", req)
         devices, err := plugin.rm.GetPreferredAllocation(req.AvailableDeviceIDs, req.MustIncludeDeviceIDs, int(req.AllocationSize))
         if err != nil {
+            klog.Errorf("Error getting preferred allocation for %q: %v", plugin.rm.Resource(), err)
             return nil, fmt.Errorf("error getting list of preferred allocation devices: %v", err)
         }
 

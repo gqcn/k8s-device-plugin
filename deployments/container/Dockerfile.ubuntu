@@ -46,7 +46,6 @@ ARG GIT_COMMIT="unknown"
 
 
 RUN echo $GOPATH
-RUN ls -l $GOPATH
 
 RUN make PREFIX=/artifacts cmds
 

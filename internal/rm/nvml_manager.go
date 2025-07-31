@@ -115,6 +115,7 @@ func (r *nvmlResourceManager) getPreferredAllocation(available, required []strin
 func (r *nvmlResourceManager) alignedAlloc(available, required []string, size int) ([]string, error) {
     var devices []string
 
+    klog.Infof("Allocating alignment policy for %s, %v, %v, %v", r.resource, available, required, size)
     linkedDevices, err := gpuallocator.NewDevices(
         gpuallocator.WithNvmlLib(r.nvml),
     )
@@ -123,12 +124,14 @@ func (r *nvmlResourceManager) alignedAlloc(available, required []string, size in
         return nil, fmt.Errorf("unable to get device link information: %w", err)
     }
 
+    klog.Infof("linkedDevices.Filter 1: %v, %v", linkedDevices, available)
     availableDevices, err := linkedDevices.Filter(available)
     if err != nil {
         klog.Infof("Error retrieving available devices: %v", err)
         return nil, fmt.Errorf("unable to retrieve list of available devices: %v", err)
     }
 
+    klog.Infof("linkedDevices.Filter 2: %v, %v", linkedDevices, required)
     requiredDevices, err := linkedDevices.Filter(required)
     if err != nil {
         klog.Infof("Error retrieving required devices: %v", err)

@@ -14,14 +14,21 @@
 
 package nvml
 
-import "C"
+import (
+	"C"
+
+	"k8s.io/klog/v2"
+)
 
 // nvml.Init()
 func (l *library) Init() Return {
 	if err := l.load(); err != nil {
 		return ERROR_LIBRARY_NOT_FOUND
 	}
-	return nvmlInit()
+	klog.Info("nvmlInit start")
+	ret := nvmlInit()
+	klog.Info("nvmlInit end")
+	return ret
 }
 
 // nvml.InitWithFlags()

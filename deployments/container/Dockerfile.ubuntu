@@ -20,7 +20,6 @@ RUN apt-get update && \
     && \
     rm -rf /var/lib/apt/lists/*
 
-ARG GOLANG_VERSION=1.20.5
 RUN set -eux; \
     \
     arch="$(uname -m)"; \
@@ -32,6 +31,8 @@ RUN set -eux; \
     esac; \
     wget -nv -O - https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${ARCH}.tar.gz \
     | tar -C /usr/local -xz
+
+RUN ls -l /usr/local
 
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH

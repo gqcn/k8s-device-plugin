@@ -115,7 +115,10 @@ func (r *nvmlResourceManager) getPreferredAllocation(available, required []strin
 func (r *nvmlResourceManager) alignedAlloc(available, required []string, size int) ([]string, error) {
     var devices []string
 
-    klog.Infof("Allocating alignment policy for %s, %v, %v, %v", r.resource, available, required, size)
+    klog.Infof(
+        "Allocating alignment policy for %s, %v, %v, %v, %v",
+        r.resource, available, required, size, r.nvml,
+    )
     linkedDevices, err := gpuallocator.NewDevices(
         gpuallocator.WithNvmlLib(r.nvml),
     )

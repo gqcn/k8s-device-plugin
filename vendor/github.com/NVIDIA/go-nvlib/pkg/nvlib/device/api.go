@@ -18,6 +18,7 @@ package device
 
 import (
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
+	"k8s.io/klog/v2"
 )
 
 // Interface provides the API to the 'device' package.
@@ -59,6 +60,7 @@ func New(nvmllib nvml.Interface, opts ...Option) Interface {
 		d.verifySymbols = &verify
 	}
 	if d.skippedDevices == nil {
+		klog.Infof("skippedDevices")
 		WithSkippedDevices(
 			"DGX Display",
 			"NVIDIA DGX Display",

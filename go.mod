@@ -1,6 +1,6 @@
 module github.com/NVIDIA/k8s-device-plugin
 
-go 1.22.2
+go 1.23
 
 require (
 	github.com/NVIDIA/go-gpuallocator v0.5.0

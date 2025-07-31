@@ -42,7 +42,15 @@ COPY . .
 RUN mkdir /artifacts
 ARG VERSION="N/A"
 ARG GIT_COMMIT="unknown"
+
+
+RUN echo $GOPATH
+RUN ls -l $GOPATH
+
 RUN make PREFIX=/artifacts cmds
+
+
+
 
 FROM nvidia/cuda:12.5.1-base-ubuntu22.04
 

@@ -17,7 +17,7 @@
 FROM golang:1.22.6
 
 WORKDIR /work
-COPY * .
+COPY * ./
 
 RUN make install-tools
 

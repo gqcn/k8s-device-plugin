@@ -20,7 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-
+	"k8s.io/klog/v2"
 	"github.com/NVIDIA/go-nvml/pkg/dl"
 )
 
@@ -104,7 +104,11 @@ func (l *library) load() (rerr error) {
 	l.Lock()
 	defer l.Unlock()
 
-	defer func() { l.refcount.IncOnNoError(rerr) }()
+	klog.Infof("loading library start: %q", l.path)
+	defer func() {
+		klog.Infof("loading library end: %q, %v", l.path, rerr)
+		l.refcount.IncOnNoError(rerr)
+	}()
 	if l.refcount > 0 {
 		return nil
 	}
@@ -117,7 +121,9 @@ func (l *library) load() (rerr error) {
 	errorStringFunc = nvmlErrorString
 
 	// Update all versioned symbols
+	klog.Infof("updateVersionedSymbols start")
 	l.updateVersionedSymbols()
+	klog.Infof("updateVersionedSymbols end")
 
 	return nil
 }

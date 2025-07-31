@@ -19,7 +19,7 @@ package device
 import (
 	"fmt"
 	"strings"
-
+	"k8s.io/klog/v2"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 )
 
@@ -359,13 +359,17 @@ func (d *device) isSkipped() (bool, error) {
 
 // VisitDevices visits each top-level device and invokes a callback function for it.
 func (d *devicelib) VisitDevices(visit func(int, Device) error) error {
+	klog.Infof("VisitDevices start")
 	count, ret := d.nvmllib.DeviceGetCount()
+	klog.Infof("VisitDevices end: %v, %v", count, ret)
 	if ret != nvml.SUCCESS {
 		return fmt.Errorf("error getting device count: %v", ret)
 	}
 
 	for i := 0; i < count; i++ {
+		klog.Infof("d.nvmllib.DeviceGetHandleByIndex start: %v", i)
 		device, ret := d.nvmllib.DeviceGetHandleByIndex(i)
+		klog.Infof("d.nvmllib.DeviceGetHandleByIndex end: %v, %v, %v", i, device, ret)
 		if ret != nvml.SUCCESS {
 			return fmt.Errorf("error getting device handle for index '%v': %v", i, ret)
 		}
@@ -375,6 +379,7 @@ func (d *devicelib) VisitDevices(visit func(int, Device) error) error {
 		}
 
 		isSkipped, err := dev.isSkipped()
+		klog.Infof("dev.isSkipped(): %v, %v, %v", dev, isSkipped, err)
 		if err != nil {
 			return fmt.Errorf("error checking whether device is skipped: %v", err)
 		}
@@ -443,6 +448,7 @@ func (d *devicelib) VisitMigProfiles(visit func(MigProfile) error) error {
 func (d *devicelib) GetDevices() ([]Device, error) {
 	var devs []Device
 	err := d.VisitDevices(func(i int, dev Device) error {
+		klog.Infof("VisitDevices: %v, %v", i, dev)
 		devs = append(devs, dev)
 		return nil
 	})

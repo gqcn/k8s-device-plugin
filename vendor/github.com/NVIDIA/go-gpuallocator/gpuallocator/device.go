@@ -95,20 +95,25 @@ func NewDevices(opts ...Option) (DeviceList, error) {
 
 // build uses the configured options to build a DeviceList.
 func (o *deviceListBuilder) build() (DeviceList, error) {
+	klog.Infof("buildDeviceList start")
 	if err := o.nvmllib.Init(); err != nvml.SUCCESS {
 		return nil, fmt.Errorf("error calling nvml.Init: %v", err)
 	}
 	defer func() {
+		klog.Infof("buildDeviceList end")
 		_ = o.nvmllib.Shutdown()
 	}()
 
+	klog.Infof("buildDeviceList GetDevices start")
 	nvmlDevices, err := o.devicelib.GetDevices()
+	klog.Infof("buildDeviceList GetDevices end: %v", nvmlDevices)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get devices: %v", err)
 	}
 
 	var devices DeviceList
 	for i, d := range nvmlDevices {
+		klog.Infof("buildDeviceList nvmlDevices[%d]: %v", i, d)
 		device, err := newDevice(i, d)
 		if err != nil {
 			return nil, fmt.Errorf("failed to construct linked device: %v", err)
@@ -119,7 +124,9 @@ func (o *deviceListBuilder) build() (DeviceList, error) {
 	for i, d1 := range nvmlDevices {
 		for j, d2 := range nvmlDevices {
 			if i != j {
+				klog.Infof("nvmlDevices loop links.GetP2PLink start: %v, %v, %v, %v", i, j, d1, d2)
 				p2plink, err := links.GetP2PLink(d1, d2)
+				klog.Infof("nvmlDevices loop links.GetP2PLink end: %v, %v", p2plink, err)
 				if err != nil {
 					return nil, fmt.Errorf("error getting P2PLink for devices (%v, %v): %v", i, j, err)
 				}
@@ -127,10 +134,13 @@ func (o *deviceListBuilder) build() (DeviceList, error) {
 					devices[i].Links[j] = append(devices[i].Links[j], P2PLink{devices[j], p2plink})
 				}
 
+				klog.Infof("nvmlDevices loop links.GetNVLink start")
 				nvlink, err := links.GetNVLink(d1, d2)
+				klog.Infof("nvmlDevices loop links.GetNVLink end: %v, %v", nvlink, err)
 				if err != nil {
 					return nil, fmt.Errorf("error getting NVLink for devices (%v, %v): %v", i, j, err)
 				}
+
 				if nvlink != links.P2PLinkUnknown {
 					devices[i].Links[j] = append(devices[i].Links[j], P2PLink{devices[j], nvlink})
 				}

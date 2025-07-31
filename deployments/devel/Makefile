@@ -30,7 +30,7 @@ DOCKERFILE_CONTEXT = deployments/devel
 .PHONY: .build-image
 .build-image:
 	$(DOCKER) build \
-		--progress=plain \
+#		--progress=plain \
 		--build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
 		--tag $(BUILDIMAGE) \
 		-f $(DOCKERFILE_DEVEL) \
